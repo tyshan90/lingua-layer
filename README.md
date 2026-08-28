@@ -46,7 +46,20 @@ Give Codex this repository's GitHub URL and ask:
 2. Copy `skills/lingua-layer` to `$CODEX_HOME/skills/lingua-layer`. If `CODEX_HOME` is unset, use `~/.codex/skills/lingua-layer`.
 3. Start a new Codex task or restart Codex so the skill is discovered.
 
+To verify the installation before starting a task, run `python <skill-directory>/scripts/lingua_state.py status` (replace `<skill-directory>` with the copied path). Then explicitly invoke it with `Use $lingua-layer.`
+
 LinguaLayer requires Python 3.10 or newer and has no third-party dependencies.
+
+## Use with Claude and Gemini
+
+The core behavior is provider-neutral. Copy [`docs/LINGUA_LAYER_PROMPT.md`](docs/LINGUA_LAYER_PROMPT.md) into a host's instructions, then follow the host-specific steps in [`integrations/README.md`](integrations/README.md):
+
+- Claude.ai: add the prompt to a Project's instructions and knowledge.
+- Claude Code: copy [`integrations/claude/CLAUDE.md`](integrations/claude/CLAUDE.md) to the clone root as `CLAUDE.md`.
+- Gemini Apps: add the prompt to a custom Gem's instructions and Knowledge.
+- Gemini API or AI Studio: pass the prompt as `system_instruction` and connect the state operations through function calling.
+
+The web products cannot run the bundled local Python helper. Use best-effort in-chat learning there, or provide an authenticated per-user state service for reliable cross-chat and multi-device exposure counts. See [`integrations/README.md`](integrations/README.md) for the documented provider setup and privacy boundary.
 
 ## First use
 
