@@ -38,12 +38,12 @@ Once a word reaches exposure 11, it moves to learned vocabulary and a new word e
 
 Give Codex this repository's GitHub URL and ask:
 
-> Install this skill from the GitHub repository.
+> Install the skill at `skills/lingua-layer` from this GitHub repository.
 
 ### Install manually
 
 1. Download or clone this repository.
-2. Place the repository folder at `$CODEX_HOME/skills/lingua-layer`. If `CODEX_HOME` is unset, use `~/.codex/skills/lingua-layer`.
+2. Copy `skills/lingua-layer` to `$CODEX_HOME/skills/lingua-layer`. If `CODEX_HOME` is unset, use `~/.codex/skills/lingua-layer`.
 3. Start a new Codex task or restart Codex so the skill is discovered.
 
 LinguaLayer requires Python 3.10 or newer and has no third-party dependencies.
@@ -99,7 +99,7 @@ The skill requests implicit invocation after setup, but current official OpenAI 
 From the repository root:
 
 ```text
-python -m unittest discover -s tests -v
+python -m unittest discover -s skills/lingua-layer/tests -v
 ```
 
 ## License
