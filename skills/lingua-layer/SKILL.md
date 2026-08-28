@@ -9,7 +9,7 @@ Help the user absorb a language while completing their real task. The learning l
 
 ## Load learner state
 
-Resolve `scripts/lingua_state.py` relative to this file and run `python scripts/lingua_state.py status` at the start of a task in which this skill is selected.
+Resolve `scripts/lingua_state.py` relative to this file, regardless of the shell's current working directory, and run the helper from that resolved path at the start of a task in which this skill is selected (for example, `python "/absolute/path/to/lingua-layer/scripts/lingua_state.py" status`).
 
 - If `initialized` is false, ask only: `Which language would you like to start learning?`
 - After the answer, infer the translation language from the language the user is currently using, default the level to `beginner` and transliteration to `auto`, then run `setup`.

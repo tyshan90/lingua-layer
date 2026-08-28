@@ -119,6 +119,44 @@ class StoreTests(unittest.TestCase):
         self.assertFalse(self.store.pause()["enabled"])
         self.assertTrue(self.store.resume()["enabled"])
 
+    def test_switching_while_paused_does_not_resume_overlay(self):
+        self.store.setup("Malay", translation_language="English")
+        self.store.pause()
+
+        state = self.store.switch_language("Japanese", translation_language="English")
+
+        self.assertFalse(state["enabled"])
+
+    def test_consume_rejects_exposure_overflow_without_changing_state(self):
+        self.store.setup("Malay", translation_language="English")
+        self.store.add_word("mudah", "simple")
+        self.store.consume("mudah", count=11)
+
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        state["languages"]["Malay"]["learned_words"][0]["exposures"] = 1_000_000
+        self.state_path.write_text(json.dumps(state), encoding="utf-8")
+        before = self.state_path.read_text(encoding="utf-8")
+
+        with self.assertRaisesRegex(StateError, "exposure limit"):
+            self.store.consume("mudah")
+
+        self.assertEqual(before, self.state_path.read_text(encoding="utf-8"))
+
+    def test_invalid_utf8_state_is_reported_as_state_error(self):
+        self.state_path.write_bytes(bytes([0xFF]))
+
+        with self.assertRaisesRegex(StateError, "UTF-8"):
+            self.store.view()
+
+    def test_surrogate_input_is_reported_as_state_error_without_changing_state(self):
+        self.store.setup("Malay", translation_language="English")
+        before = self.state_path.read_text(encoding="utf-8")
+
+        with self.assertRaisesRegex(StateError, "Unicode"):
+            self.store.add_word("\ud800", "invalid")
+
+        self.assertEqual(before, self.state_path.read_text(encoding="utf-8"))
+
     def test_profile_settings_can_be_changed_without_resetting_progress(self):
         self.store.setup("Japanese", translation_language="English")
         self.store.add_word("簡単", "simple", transliteration="kantan")

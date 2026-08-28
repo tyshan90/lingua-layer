@@ -21,6 +21,7 @@ MAX_STATE_BYTES = 1_000_000
 MAX_LANGUAGE_LENGTH = 80
 MAX_WORD_LENGTH = 200
 MAX_CONSUME_COUNT = 100
+MAX_EXPOSURES = 1_000_000
 
 
 class StateError(ValueError):
@@ -46,6 +47,8 @@ def clean_text(value: str, field: str, maximum: int) -> str:
         raise StateError(f"{field} cannot exceed {maximum} characters")
     if any(ord(character) < 32 or ord(character) == 127 for character in normalized):
         raise StateError(f"{field} cannot contain control characters")
+    if any(unicodedata.category(character) == "Cs" for character in normalized):
+        raise StateError(f"{field} contains invalid Unicode characters")
     return normalized
 
 
@@ -101,6 +104,7 @@ class Store:
         transliteration: str | None = None,
     ) -> dict[str, Any]:
         state = self._load()
+        was_initialized = state["initialized"]
         language = clean_text(language, "language", MAX_LANGUAGE_LENGTH)
         key = self._language_key(state, language) or language
         if key not in state["languages"]:
@@ -110,7 +114,8 @@ class Store:
                 transliteration or "auto",
             )
         state["initialized"] = True
-        state["enabled"] = True
+        if not was_initialized:
+            state["enabled"] = True
         state["active_language"] = key
         self._save(state)
         return self.view()
@@ -177,6 +182,8 @@ class Store:
         if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= MAX_CONSUME_COUNT:
             raise StateError(f"count must be between 1 and {MAX_CONSUME_COUNT}")
         word, collection = self._find_word(profile, term)
+        if word["exposures"] > MAX_EXPOSURES - count:
+            raise StateError(f"exposure limit is {MAX_EXPOSURES}")
         presentations: list[dict[str, Any]] = []
         for _ in range(count):
             word["exposures"] += 1
@@ -280,6 +287,8 @@ class Store:
         try:
             raw = self.path.read_text(encoding="utf-8")
             state = json.loads(raw)
+        except UnicodeDecodeError as error:
+            raise StateError("state file is not valid UTF-8") from error
         except json.JSONDecodeError as error:
             raise StateError("state file is not valid JSON") from error
         except OSError as error:
@@ -349,7 +358,7 @@ class Store:
                     not isinstance(exposures, int)
                     or isinstance(exposures, bool)
                     or exposures < 0
-                    or exposures > 1_000_000
+                    or exposures > MAX_EXPOSURES
                 ):
                     raise StateError("invalid exposure count")
                 if collection_name == "active_words" and exposures >= LEARNED_EXPOSURE:
@@ -362,9 +371,13 @@ class Store:
                 seen.add(folded)
 
     def _save(self, state: dict[str, Any]) -> None:
-        payload = json.dumps(
-            state, ensure_ascii=False, indent=2, sort_keys=True
-        ).encode("utf-8") + b"\n"
+        self._validate_shape(state)
+        try:
+            payload = json.dumps(
+                state, ensure_ascii=False, indent=2, sort_keys=True
+            ).encode("utf-8") + b"\n"
+        except UnicodeError as error:
+            raise StateError("state contains invalid Unicode characters") from error
         if len(payload) > MAX_STATE_BYTES:
             raise StateError("state file would exceed the 1 MB limit")
         temporary: Path | None = None
