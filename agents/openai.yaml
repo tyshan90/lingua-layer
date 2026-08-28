@@ -1,0 +1,6 @@
+interface:
+  display_name: "LinguaLayer"
+  short_description: "Learn a language while you work"
+  default_prompt: "Use $lingua-layer to start passive language learning while I work."
+policy:
+  allow_implicit_invocation: true
