@@ -2,7 +2,7 @@
 
 **Learn a language while you work.**
 
-LinguaLayer is a Codex skill that adds at most one non-essential target-language word to each response while keeping the surrounding prose in the learner's configured base language. Code, commands, configuration, infrastructure guidance, warnings, and exact technical content remain unchanged.
+LinguaLayer is a Codex skill for every user: it adds at most one non-essential target-language word to each response while keeping the surrounding prose in the learner's configured base language. Code, commands, configuration, infrastructure guidance, warnings, and exact technical content remain unchanged.
 
 It maintains five active words per language, repeats them in natural context, and gradually removes translations as they become familiar. Progress is stored locally and separately for every language.
 
