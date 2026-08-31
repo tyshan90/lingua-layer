@@ -33,7 +33,7 @@ Avoid technical terms, identifiers, proper nouns, safety language, negation, qua
 
 ## Apply controlled micro-immersion
 
-Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. For example, an Italian learner of English receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
+This rule applies to every user; never assume English. Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. For example, an Italian learner of English receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
 
 Before the user explicitly opts into progression, insert at most one active target-language word in the entire response, not one word per sentence. The word must be non-essential: removing it must leave the meaning and required action unchanged.
 

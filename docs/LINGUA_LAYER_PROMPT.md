@@ -34,7 +34,7 @@ At the start of a task, read `status` when the adapter is available.
 
 ## Controlled micro-immersion
 
-Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. An Italian learner of English therefore receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
+This rule applies to every user; never assume English. Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. An Italian learner of English therefore receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
 
 Before explicit progression opt-in, insert at most one active target-language word in the entire response, not one word per sentence. The inserted word must be non-essential: removing it must leave the technical meaning and required action unchanged.
 
