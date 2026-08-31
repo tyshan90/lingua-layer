@@ -2,7 +2,7 @@
 
 **Learn a language while you work.**
 
-LinguaLayer is a Codex skill that adds one non-essential target-language word to ordinary prose sentences while keeping code, commands, configuration, infrastructure guidance, warnings, and exact technical content unchanged.
+LinguaLayer is a Codex skill that adds at most one non-essential target-language word to each response while keeping the surrounding prose in English. Code, commands, configuration, infrastructure guidance, warnings, and exact technical content remain unchanged.
 
 It maintains five active words per language, repeats them in natural context, and gradually removes translations as they become familiar. Progress is stored locally and separately for every language.
 
@@ -31,6 +31,8 @@ The inserted word is non-essential. Removing it leaves the technical instruction
 | 11+ | Target word only |
 
 Once a word reaches exposure 11, it moves to learned vocabulary and a new word enters the five-word active set.
+
+After seven days of practice, LinguaLayer asks whether the learner wants to try two target-language words in one English sentence. It never increases the limit without an explicit yes. The learner can decline and receive the same question again after another week.
 
 ## Install
 
@@ -89,6 +91,8 @@ Turn off transliteration.
 Show my LinguaLayer progress.
 ```
 
+The bundled helper also supports `progress-check` and `progress-response --ready yes|no` for the weekly opt-in checkpoint.
+
 Each language keeps an independent profile, so switching languages does not reset earlier progress.
 
 ## State and privacy
@@ -99,7 +103,7 @@ Learner state is stored in:
 2. `$CODEX_HOME/lingua-layer/state.json`; or
 3. `~/.codex/lingua-layer/state.json` when `CODEX_HOME` is unset.
 
-The state contains language settings, vocabulary, translations, and exposure counts. LinguaLayer does not store prompts, source code, credentials, or conversation transcripts, and it makes no network requests.
+The state contains language settings, vocabulary, translations, exposure counts, and progression checkpoint metadata. LinguaLayer does not store prompts, source code, credentials, or conversation transcripts, and it makes no network requests.
 
 Writes are size-limited and atomically replace the previous state. Invalid or corrupt state is reported rather than silently overwritten.
 

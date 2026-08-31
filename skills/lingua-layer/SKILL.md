@@ -1,6 +1,6 @@
 ---
 name: lingua-layer
-description: Apply LinguaLayer's passive vocabulary overlay to ordinary Codex prose whenever its persistent learner state is enabled. On first use, ask which language to learn; keep code, infrastructure, warnings, and exact technical content untouched.
+description: Apply LinguaLayer's controlled vocabulary overlay to ordinary Codex prose whenever its persistent learner state is enabled. Keep the main response in English, ask before increasing difficulty, and keep code, infrastructure, warnings, and exact technical content untouched.
 ---
 
 # LinguaLayer
@@ -31,9 +31,11 @@ Choose words that are:
 
 Avoid technical terms, identifiers, proper nouns, safety language, negation, quantities, and words whose mistranslation could change an instruction.
 
-## Apply one-word micro-immersion
+## Apply controlled micro-immersion
 
-Insert exactly one active target-language word into each eligible prose sentence. An eligible sentence is ordinary explanatory or conversational prose where removing the inserted word would leave the technical meaning and required action unchanged.
+Keep all ordinary prose in English. Before the user explicitly opts into progression, insert at most one active target-language word in the entire response, not one word per sentence. The word must be non-essential: removing it must leave the meaning and required action unchanged.
+
+After the user opts into the two-word stage, insert at most two active target-language words in the entire response, and place both in one English sentence. Never translate a full sentence or paragraph into the target language unless the user explicitly asks.
 
 Good pattern:
 
@@ -51,9 +53,21 @@ Never insert or substitute learning vocabulary inside:
 
 Headings, labels, sentence fragments, and terse status updates may remain unchanged. If no safe non-essential insertion exists, skip the overlay for that sentence.
 
+## Weekly progression checkpoint
+
+Use the state helper's `progress-check` command after `status` at the start of a task. The helper tracks a seven-day checkpoint per language profile and returns whether a prompt is due.
+
+When `progress-check` returns `due: true`, ask exactly:
+
+> You have practised for one week. Would you like to try two target-language words in one English sentence? Reply: Yes or Keep one.
+
+Do not add learning vocabulary to that question. Wait for an explicit answer before changing difficulty. On `Yes`, run `progress-response --ready yes` and use the two-word stage. On `Keep one`, run `progress-response --ready no` and keep the one-word stage for another week. Never promote automatically based only on exposure counts. If the user does not answer, leave the prompt pending and do not ask again until they respond.
+
+If the host cannot run the helper, perform the same check only when the user next interacts, and never claim that the checkpoint was persisted.
+
 ## Record exposures and fade translations
 
-Before sending the response, count how many times each active word will appear and run `consume --term <word> --count <number>` for each one. Render each occurrence according to the returned exposure entry:
+Before sending the response, count how many times each active word will appear and run `consume --term <word> --count <number>` for each one. Enforce the one-word or two-word response limit before calling `consume`. Render each occurrence according to the returned exposure entry:
 
 - exposures 1–5: show the translation;
 - exposures 6, 8, and 10: show the translation;
@@ -71,6 +85,8 @@ Translate user requests into the matching helper command:
 - `switch --language <language>` creates or resumes a separate language profile.
 - `pause` and `resume` toggle the overlay without deleting progress.
 - `configure` changes level, translation language, or transliteration without resetting vocabulary.
+- `progress-check` checks whether the weekly progression prompt is due.
+- `progress-response --ready yes|no` records the user's explicit progression choice.
 - `status` reports progress when requested; do not expose the raw local path unless useful.
 
 Do not turn normal work into lessons, quizzes, corrections, or vocabulary recaps unless the user explicitly asks.

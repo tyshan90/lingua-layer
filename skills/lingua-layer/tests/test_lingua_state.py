@@ -2,6 +2,7 @@ import json
 import sys
 import unittest
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -173,6 +174,75 @@ class StoreTests(unittest.TestCase):
         self.assertEqual("Malay", profile["translation_language"])
         self.assertEqual("off", profile["transliteration"])
         self.assertEqual(2, profile["active_words"][0]["exposures"])
+
+    def test_progress_check_waits_a_week_and_only_prompts_once(self):
+        started = datetime(2026, 8, 31, 9, tzinfo=timezone.utc)
+        self.store.setup("Malay", translation_language="English", now=started)
+
+        before_due = self.store.progress_check(now=started + timedelta(days=6, hours=23))
+        self.assertFalse(before_due["due"])
+        self.assertFalse(before_due["progress_prompt_pending"])
+
+        due = self.store.progress_check(now=started + timedelta(days=7))
+        self.assertTrue(due["due"])
+        self.assertTrue(due["progress_prompt_pending"])
+
+        repeated = self.store.progress_check(now=started + timedelta(days=7, minutes=1))
+        self.assertFalse(repeated["due"])
+        self.assertTrue(repeated["progress_prompt_pending"])
+
+    def test_progress_response_accepts_two_words_only_after_opt_in(self):
+        started = datetime(2026, 8, 31, 9, tzinfo=timezone.utc)
+        self.store.setup("Malay", translation_language="English", now=started)
+
+        with self.assertRaisesRegex(StateError, "no progress prompt"):
+            self.store.progress_response(True, now=started + timedelta(days=7))
+
+        self.store.progress_check(now=started + timedelta(days=7))
+        accepted = self.store.progress_response(
+            True, now=started + timedelta(days=7, minutes=1)
+        )
+
+        self.assertEqual(2, accepted["words_per_sentence"])
+        self.assertFalse(accepted["progress_prompt_pending"])
+        self.assertIsNone(accepted["next_progress_check_at"])
+
+    def test_declining_progression_reschedules_the_prompt(self):
+        started = datetime(2026, 8, 31, 9, tzinfo=timezone.utc)
+        self.store.setup("Malay", translation_language="English", now=started)
+        self.store.progress_check(now=started + timedelta(days=7))
+
+        declined = self.store.progress_response(
+            False, now=started + timedelta(days=7, minutes=1)
+        )
+        self.assertEqual(1, declined["words_per_sentence"])
+        self.assertFalse(declined["progress_prompt_pending"])
+        self.assertEqual(
+            "2026-09-14T09:01:00Z", declined["next_progress_check_at"]
+        )
+
+    def test_legacy_profile_gets_progress_defaults_when_checked(self):
+        self.store.setup("Malay", translation_language="English")
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        profile = state["languages"]["Malay"]
+        for field in (
+            "started_at",
+            "next_progress_check_at",
+            "last_progress_prompt_at",
+            "progress_prompt_pending",
+            "words_per_sentence",
+        ):
+            profile.pop(field, None)
+        self.state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        checked = self.store.progress_check(
+            now=datetime(2026, 8, 31, 9, tzinfo=timezone.utc)
+        )
+        self.assertFalse(checked["due"])
+        self.assertEqual(1, checked["words_per_sentence"])
+        self.assertEqual(
+            "2026-09-07T09:00:00Z", checked["next_progress_check_at"]
+        )
 
 
 if __name__ == "__main__":
