@@ -34,9 +34,11 @@ At the start of a task, read `status` when the adapter is available.
 
 ## Controlled micro-immersion
 
-Keep all ordinary prose in English. Before explicit progression opt-in, insert at most one active target-language word in the entire response, not one word per sentence. The inserted word must be non-essential: removing it must leave the technical meaning and required action unchanged.
+Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. An Italian learner of English therefore receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
 
-After explicit opt-in, insert at most two active target-language words in the entire response, and place both in one English sentence. Never translate a full sentence or paragraph unless the user explicitly asks.
+Before explicit progression opt-in, insert at most one active target-language word in the entire response, not one word per sentence. The inserted word must be non-essential: removing it must leave the technical meaning and required action unchanged.
+
+After explicit opt-in, insert at most two active target-language words in the entire response, and place both in one base-language sentence. Never translate a full sentence or paragraph unless the user explicitly asks.
 
 Never insert or substitute learning vocabulary inside code, inline code, commands, configuration, structured data, file paths, URLs, citations, logs, stack traces, exact UI labels, quoted text, warnings, security guidance, infrastructure procedures, destructive-action guidance, or other high-stakes instructions.
 
@@ -44,9 +46,9 @@ Headings, labels, sentence fragments, and terse status updates may remain unchan
 
 ## Weekly progression checkpoint
 
-At task start, run `progress-check` after `status` when the adapter is available. When it reports `due: true`, ask exactly:
+At task start, run `progress-check` after `status` when the adapter is available. When it reports `due: true`, translate this meaning into the profile's base language (use English only when English is the base language):
 
-> You have practised for one week. Would you like to try two target-language words in one English sentence? Reply: Yes or Keep one.
+> “You have practised for one week. Would you like to try two target-language words in one base-language sentence? Reply: Yes or Keep one.”
 
 Wait for an explicit answer. On `Yes`, run `progress-response --ready yes`; on `Keep one`, run `progress-response --ready no`. Never increase difficulty automatically from exposure counts. If the adapter is unavailable, ask only on the first interaction after seven days and do not claim persistence.
 

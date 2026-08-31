@@ -1,6 +1,6 @@
 ---
 name: lingua-layer
-description: Apply LinguaLayer's controlled vocabulary overlay to ordinary Codex prose whenever its persistent learner state is enabled. Keep the main response in English, ask before increasing difficulty, and keep code, infrastructure, warnings, and exact technical content untouched.
+description: Apply LinguaLayer's controlled vocabulary overlay to ordinary Codex prose whenever its persistent learner state is enabled. Keep the main response in the learner's configured base language, ask before increasing difficulty, and keep code, infrastructure, warnings, and exact technical content untouched.
 ---
 
 # LinguaLayer
@@ -33,9 +33,11 @@ Avoid technical terms, identifiers, proper nouns, safety language, negation, qua
 
 ## Apply controlled micro-immersion
 
-Keep all ordinary prose in English. Before the user explicitly opts into progression, insert at most one active target-language word in the entire response, not one word per sentence. The word must be non-essential: removing it must leave the meaning and required action unchanged.
+Treat the profile's `translation_language` as the base language for ordinary prose and its `active_language` as the target language. Keep all ordinary prose in the base language. For example, an Italian learner of English receives Italian prose with English insertions; an English learner of Italian receives English prose with Italian insertions.
 
-After the user opts into the two-word stage, insert at most two active target-language words in the entire response, and place both in one English sentence. Never translate a full sentence or paragraph into the target language unless the user explicitly asks.
+Before the user explicitly opts into progression, insert at most one active target-language word in the entire response, not one word per sentence. The word must be non-essential: removing it must leave the meaning and required action unchanged.
+
+After the user opts into the two-word stage, insert at most two active target-language words in the entire response, and place both in one base-language sentence. Never translate a full sentence or paragraph into the target language unless the user explicitly asks.
 
 Good pattern:
 
@@ -57,9 +59,9 @@ Headings, labels, sentence fragments, and terse status updates may remain unchan
 
 Use the state helper's `progress-check` command after `status` at the start of a task. The helper tracks a seven-day checkpoint per language profile and returns whether a prompt is due.
 
-When `progress-check` returns `due: true`, ask exactly:
+When `progress-check` returns `due: true`, translate this meaning into the profile's base language (use English only when English is the base language):
 
-> You have practised for one week. Would you like to try two target-language words in one English sentence? Reply: Yes or Keep one.
+> “You have practised for one week. Would you like to try two target-language words in one base-language sentence? Reply: Yes or Keep one.”
 
 Do not add learning vocabulary to that question. Wait for an explicit answer before changing difficulty. On `Yes`, run `progress-response --ready yes` and use the two-word stage. On `Keep one`, run `progress-response --ready no` and keep the one-word stage for another week. Never promote automatically based only on exposure counts. If the user does not answer, leave the prompt pending and do not ask again until they respond.
 
