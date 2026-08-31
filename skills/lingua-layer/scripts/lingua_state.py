@@ -10,6 +10,7 @@ import sys
 import unicodedata
 import uuid
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,8 @@ MAX_LANGUAGE_LENGTH = 80
 MAX_WORD_LENGTH = 200
 MAX_CONSUME_COUNT = 100
 MAX_EXPOSURES = 1_000_000
+PROGRESS_INTERVAL = timedelta(days=7)
+MAX_WORDS_PER_SENTENCE = 2
 
 
 class StateError(ValueError):
@@ -70,6 +73,57 @@ def empty_state() -> dict[str, Any]:
     }
 
 
+def _normalise_now(value: datetime | None) -> datetime:
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(timezone.utc)
+
+
+def _format_timestamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _parse_timestamp(value: str) -> datetime:
+    if not isinstance(value, str):
+        raise StateError("progress timestamps must be text")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise StateError("progress timestamp is invalid") from error
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _ensure_progress_fields(profile: dict[str, Any], now: datetime) -> bool:
+    changed = False
+    defaults = {
+        "started_at": _format_timestamp(now),
+        "next_progress_check_at": _format_timestamp(now + PROGRESS_INTERVAL),
+        "last_progress_prompt_at": None,
+        "progress_prompt_pending": False,
+        "words_per_sentence": 1,
+    }
+    for field, value in defaults.items():
+        if field not in profile:
+            profile[field] = value
+            changed = True
+    return changed
+
+
+def _progress_view(profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "started_at": profile["started_at"],
+        "next_progress_check_at": profile["next_progress_check_at"],
+        "last_progress_prompt_at": profile["last_progress_prompt_at"],
+        "progress_prompt_pending": profile["progress_prompt_pending"],
+        "words_per_sentence": profile["words_per_sentence"],
+    }
+
+
 class Store:
     def __init__(self, path: Path | str | None = None):
         self.path = Path(path) if path is not None else default_state_path()
@@ -81,13 +135,14 @@ class Store:
         translation_language: str = "English",
         level: str = "beginner",
         transliteration: str = "auto",
+        now: datetime | None = None,
     ) -> dict[str, Any]:
         state = self._load()
         language = clean_text(language, "language", MAX_LANGUAGE_LENGTH)
         key = self._language_key(state, language) or language
         if key not in state["languages"]:
             state["languages"][key] = self._new_profile(
-                translation_language, level, transliteration
+                translation_language, level, transliteration, now=now
             )
         state["initialized"] = True
         state["enabled"] = True
@@ -102,6 +157,7 @@ class Store:
         translation_language: str | None = None,
         level: str | None = None,
         transliteration: str | None = None,
+        now: datetime | None = None,
     ) -> dict[str, Any]:
         state = self._load()
         was_initialized = state["initialized"]
@@ -112,6 +168,7 @@ class Store:
                 translation_language or "English",
                 level or "beginner",
                 transliteration or "auto",
+                now=now,
             )
         state["initialized"] = True
         if not was_initialized:
@@ -216,6 +273,64 @@ class Store:
         self._save(state)
         return self.view()
 
+    def progress_check(self, *, now: datetime | None = None) -> dict[str, Any]:
+        """Return whether the weekly progression prompt is due."""
+        state = self._load_initialized()
+        profile = self._active_profile(state)
+        current = _normalise_now(now)
+        changed = _ensure_progress_fields(profile, current)
+
+        if profile["words_per_sentence"] >= MAX_WORDS_PER_SENTENCE:
+            due = False
+        elif profile["progress_prompt_pending"]:
+            due = False
+        else:
+            next_check = _parse_timestamp(profile["next_progress_check_at"])
+            due = current >= next_check
+            if due:
+                profile["progress_prompt_pending"] = True
+                profile["last_progress_prompt_at"] = _format_timestamp(current)
+                changed = True
+
+        if changed:
+            self._save(state)
+        result = _progress_view(profile)
+        result["due"] = due
+        return result
+
+    def progress_response(
+        self, ready: bool, *, now: datetime | None = None
+    ) -> dict[str, Any]:
+        """Record the user's explicit yes/no response to a progression prompt."""
+        if not isinstance(ready, bool):
+            raise StateError("ready must be a boolean")
+        state = self._load_initialized()
+        profile = self._active_profile(state)
+        current = _normalise_now(now)
+        changed = _ensure_progress_fields(profile, current)
+
+        if profile["words_per_sentence"] >= MAX_WORDS_PER_SENTENCE:
+            if changed:
+                self._save(state)
+            result = _progress_view(profile)
+            result["accepted"] = True
+            return result
+        if not profile["progress_prompt_pending"]:
+            raise StateError("no progress prompt is pending")
+
+        profile["progress_prompt_pending"] = False
+        if ready:
+            profile["words_per_sentence"] = MAX_WORDS_PER_SENTENCE
+            profile["next_progress_check_at"] = None
+        else:
+            profile["next_progress_check_at"] = _format_timestamp(
+                current + PROGRESS_INTERVAL
+            )
+        self._save(state)
+        result = _progress_view(profile)
+        result["accepted"] = ready
+        return result
+
     def view(self) -> dict[str, Any]:
         state = deepcopy(self._load())
         for profile in state["languages"].values():
@@ -227,8 +342,14 @@ class Store:
         return state
 
     def _new_profile(
-        self, translation_language: str, level: str, transliteration: str
+        self,
+        translation_language: str,
+        level: str,
+        transliteration: str,
+        *,
+        now: datetime | None = None,
     ) -> dict[str, Any]:
+        current = _normalise_now(now)
         return {
             "translation_language": clean_text(
                 translation_language, "translation language", MAX_LANGUAGE_LENGTH
@@ -239,6 +360,11 @@ class Store:
             ),
             "active_words": [],
             "learned_words": [],
+            "started_at": _format_timestamp(current),
+            "next_progress_check_at": _format_timestamp(current + PROGRESS_INTERVAL),
+            "last_progress_prompt_at": None,
+            "progress_prompt_pending": False,
+            "words_per_sentence": 1,
         }
 
     def _load_initialized(self) -> dict[str, Any]:
@@ -334,6 +460,24 @@ class Store:
             raise StateError("profile must be an object")
         for field in ("translation_language", "level", "transliteration"):
             clean_text(profile[field], field.replace("_", " "), MAX_LANGUAGE_LENGTH)
+        for field in (
+            "started_at",
+            "next_progress_check_at",
+            "last_progress_prompt_at",
+        ):
+            value = profile.get(field)
+            if value is not None:
+                _parse_timestamp(value)
+        progress_prompt_pending = profile.get("progress_prompt_pending", False)
+        if not isinstance(progress_prompt_pending, bool):
+            raise StateError("invalid progress prompt state")
+        words_per_sentence = profile.get("words_per_sentence", 1)
+        if (
+            not isinstance(words_per_sentence, int)
+            or isinstance(words_per_sentence, bool)
+            or not 1 <= words_per_sentence <= MAX_WORDS_PER_SENTENCE
+        ):
+            raise StateError("words_per_sentence must be 1 or 2")
         active_words = profile["active_words"]
         learned_words = profile["learned_words"]
         if not isinstance(active_words, list) or not isinstance(learned_words, list):
@@ -436,6 +580,12 @@ def build_parser() -> argparse.ArgumentParser:
     consume.add_argument("--term", required=True)
     consume.add_argument("--count", type=int, default=1)
 
+    subparsers.add_parser("progress-check", help="check whether weekly progression is due")
+    progress_response = subparsers.add_parser(
+        "progress-response", help="record the user's progression choice"
+    )
+    progress_response.add_argument("--ready", choices=("yes", "no"), required=True)
+
     subparsers.add_parser("pause", help="pause the overlay")
     subparsers.add_parser("resume", help="resume the overlay")
     return parser
@@ -475,6 +625,10 @@ def run_cli(arguments: list[str] | None = None) -> int:
             )
         elif args.command == "consume":
             result = store.consume(args.term, count=args.count)
+        elif args.command == "progress-check":
+            result = store.progress_check()
+        elif args.command == "progress-response":
+            result = store.progress_response(args.ready == "yes")
         elif args.command == "pause":
             result = store.pause()
         else:

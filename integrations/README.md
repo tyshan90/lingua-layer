@@ -21,7 +21,7 @@ Claude.ai cannot run this repository's local Python state helper. The prompt the
 
 Claude Code loads `CLAUDE.md` at the start of each session and supports `@path/to/file` imports: <https://code.claude.com/docs/en/memory>.
 
-The bundled adapter can be called from the clone root with the commands documented in `skills/lingua-layer/scripts/lingua_state.py`. Set `LINGUA_LAYER_STATE` when you want a different state location.
+The bundled adapter can be called from the clone root with the commands documented in `skills/lingua-layer/scripts/lingua_state.py`, including the weekly `progress-check` and `progress-response --ready yes|no` checkpoint. Set `LINGUA_LAYER_STATE` when you want a different state location.
 
 ## Gemini Apps
 
@@ -37,7 +37,7 @@ Gemini Apps cannot run this repository's local Python helper, so cross-chat expo
 
 Pass the contents of `docs/LINGUA_LAYER_PROMPT.md` as `system_instruction`. Gemini's API supports this configuration: <https://ai.google.dev/gemini-api/docs/text-generation>.
 
-For persistent state, declare functions for `status`, `setup`, `switch`, `configure`, `add-word`, `consume`, `pause`, and `resume`. Execute those functions in your application and return their results to Gemini; function calling is client-executed: <https://ai.google.dev/gemini-api/docs/function-calling>.
+For persistent state, declare functions for `status`, `setup`, `switch`, `configure`, `add-word`, `consume`, `progress-check`, `progress-response`, `pause`, and `resume`. Execute those functions in your application and return their results to Gemini; function calling is client-executed: <https://ai.google.dev/gemini-api/docs/function-calling>.
 
 ## State and privacy
 
