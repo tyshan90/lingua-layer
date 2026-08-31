@@ -2,7 +2,7 @@
 
 **Learn a language while you work.**
 
-LinguaLayer is a Codex skill that adds at most one non-essential target-language word to each response while keeping the surrounding prose in English. Code, commands, configuration, infrastructure guidance, warnings, and exact technical content remain unchanged.
+LinguaLayer is a Codex skill that adds at most one non-essential target-language word to each response while keeping the surrounding prose in the learner's configured base language. Code, commands, configuration, infrastructure guidance, warnings, and exact technical content remain unchanged.
 
 It maintains five active words per language, repeats them in natural context, and gradually removes translations as they become familiar. Progress is stored locally and separately for every language.
 
@@ -32,7 +32,7 @@ The inserted word is non-essential. Removing it leaves the technical instruction
 
 Once a word reaches exposure 11, it moves to learned vocabulary and a new word enters the five-word active set.
 
-After seven days of practice, LinguaLayer asks whether the learner wants to try two target-language words in one English sentence. It never increases the limit without an explicit yes. The learner can decline and receive the same question again after another week.
+After seven days of practice, LinguaLayer asks whether the learner wants to try two target-language words in one base-language sentence. It never increases the limit without an explicit yes. The learner can decline and receive the same question again after another week.
 
 ## Install
 
